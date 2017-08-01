@@ -115,7 +115,8 @@ detector.addEventListener("onInitializeSuccess", function() {
 // NOTE: The faces object contains a list of the faces detected in the image,
 //   probabilities for different expressions, emotions and appearance metrics
 detector.addEventListener("onImageResultsSuccess", function(faces, image, timestamp) {
-  var canvas = $('#face_video_canvas')[0]
+  var canvas  = $('#face_video_canvas')[0]
+  var timeNow = Date.now()
   if (! canvas) return
   //
   // Report how many faces were found
@@ -139,7 +140,7 @@ detector.addEventListener("onImageResultsSuccess", function(faces, image, timest
     drawEmoji(canvas, image, faces[0])
     //
     // Update game functionality:
-    updateGame(faces[0])
+    updateGame(canvas, faces[0], timeNow)
   }
 })
 
@@ -210,13 +211,21 @@ function drawEmoji(canvas, img, face) {
   }
   avgX /= totalPoints
   avgY /= totalPoints
-  //log('#results', "Face avg: " + avgX + " / " + avgY)
   //
   //  Obtain a 2D context object to draw on the canvas
   var ctx    = canvas.getContext('2d')
   var emoji  = face.emojis.dominantEmoji
   ctx.font = '48px serif'
   ctx.fillText(emoji, avgX - 24, minY - ((maxY - minY) / 2))
+}
+
+
+// Draw a message of congratulation
+function drawCongrats(canvas) {
+  var ctx = canvas.getContext('2d')
+  ctx.font      = '80px serif'
+  ctx.fillStyle = "rgba(255, 0, 0, 1)"
+  ctx.fillText("Congratulations!", 25, canvas.height - 25)
 }
 
 
@@ -237,9 +246,9 @@ var priorEmoji    = null
 var currentEmoji  = null
 var timeExpressed = -1
 var targetEmoji   = null
-var numFailed     = 0
 var correctScore  = 0
 var totalAttempts = 0
+var timeCongrats  = -1
 
 
 function resetGame() {
@@ -249,13 +258,12 @@ function resetGame() {
   priorEmoji    = null
   currentEmoji  = null
   timeExpressed = -1
-  numFailed     = 0
+  showCongrats  = false
   pickNextEmoji()
 }
 
 
-function updateGame(face) {
-  var timeNow  = Date.now()
+function updateGame(canvas, face, timeNow) {
   var didMatch = false
   currentEmoji = face.emojis.dominantEmoji
   //
@@ -266,6 +274,7 @@ function updateGame(face) {
   if (priorEmoji == null) {
     priorEmoji    = currentEmoji
     timeExpressed = timeNow
+    showCongrats  = false
   }
   else if (currentEmoji != priorEmoji) {
     priorEmoji = null
@@ -274,14 +283,23 @@ function updateGame(face) {
     priorEmoji = null
     didMatch   = true
   }
-  if (! didMatch) return
   //
-  //  If there's been a change of expression, check to see if it matches the
-  //  target emoji, and increment score accordingly.
-  pickNextEmoji()
-  correctScore  += 1
-  totalAttempts += 1
-  setScore(correctScore, totalAttempts)
+  //  If the target emoji has been matched, update the score and move on to the
+  //  next.
+  if (didMatch) {
+    pickNextEmoji()
+    correctScore  += 1
+    totalAttempts += 1
+    priorEmoji    = null
+    timeCongrats  = timeNow
+    setScore(correctScore, totalAttempts)
+  }
+  //
+  //  In addition, render a small congratulations to the player for 1 second:
+  if (timeCongrats > 0) {
+    drawCongrats(canvas)
+    if (timeNow - timeCongrats > 1000) timeCongrats = -1
+  }
 }
 
 
