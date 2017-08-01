@@ -76,6 +76,12 @@ function onReset() {
   resetGame()
 }
 
+// Pass button
+function onPass() {
+  passOnGameTest()
+}
+
+
 // Add a callback to notify when camera access is allowed
 detector.addEventListener("onWebcamConnectSuccess", function() {
   log('#logs', "Webcam access allowed")
@@ -138,7 +144,21 @@ detector.addEventListener("onImageResultsSuccess", function(faces, image, timest
 })
 
 
-// --- Custom functions ---
+
+/*  CUSTOM RENDERING FUNCTIONS:
+ */
+var featureGroups = {
+  "left eyebrow"  : [5 , 6 , 7 , 11],
+  "right eyebrow" : [11, 8 , 9 , 10],
+  "left eye"      : [16, 30, 17, 31, 16],
+  "right eye "    : [18, 32, 19, 33, 18],
+  "nose ridge"    : [11, 12],
+  "nose tip"      : [12, 13, 14, 15, 12],
+  "upper lip"     : [20, 21, 22, 23, 24, 28, 20],
+  "lower lip"     : [20, 29, 24, 25, 26, 27, 20],
+  "jawline"       : [0 , 1 , 2 , 3 , 4 ]
+}
+
 
 // Draw the detected facial feature points on the image
 function drawFeaturePoints(canvas, img, face) {
@@ -146,16 +166,26 @@ function drawFeaturePoints(canvas, img, face) {
   // Obtain a 2D context object to draw on the canvas
   var ctx = canvas.getContext('2d')
   //
-  // Loop over each feature point in the face
+  // Loop over each of the facial-feature groups and connect the lines:
+  ctx.fillStyle = "#000000"
+  for (groupKey in featureGroups) {
+    var group = featureGroups[groupKey]
+    var initPoint = face.featurePoints[group[0]]
 
+    ctx.beginPath()
+    ctx.moveTo(initPoint.x, initPoint.y)
+    for (var i = 1; i < group.length; i++) {
+      var point = face.featurePoints[group[i]]
+      ctx.lineTo(point.x, point.y)
+    }
+    ctx.stroke()
+  }
   //
-  //  TODO:  Connect the dots between specific lines!  And maybe overlay a
-  //  polygon display.
-
+  //  Draw each facial point on top of the lines-
+  ctx.fillStyle = "#FF0000"
   for (var id in face.featurePoints) {
     var featurePoint = face.featurePoints[id]
     ctx.beginPath()
-    ctx.fillStyle = "#000000"
     ctx.rect(featurePoint.x, featurePoint.y, 5, 5)
     ctx.fill()
   }
@@ -165,15 +195,36 @@ function drawFeaturePoints(canvas, img, face) {
 // Draw the dominant emoji on the image
 function drawEmoji(canvas, img, face) {
   //
+  //  TODO:  Based on the average, below the bounding box!
+  var minX = canvas.width , maxX = -1
+  var minY = canvas.height, maxY = -1
+  var avgX = 0, avgY = 0, totalPoints = 0
+  //
+  for (var id in face.featurePoints) {
+    var featurePoint = face.featurePoints[id]
+    minX = Math.min(minX, featurePoint.x)
+    minY = Math.min(minY, featurePoint.y)
+    maxX = Math.max(maxX, featurePoint.x)
+    maxY = Math.max(maxY, featurePoint.y)
+    avgX += featurePoint.x
+    avgY += featurePoint.y
+    totalPoints += 1
+  }
+  avgX /= totalPoints
+  avgY /= totalPoints
+  //log('#results', "Face avg: " + avgX + " / " + avgY)
+  //
   //  Obtain a 2D context object to draw on the canvas
   var ctx    = canvas.getContext('2d')
   var emoji  = face.emojis.dominantEmoji
-  var anchor = face.featurePoints[0]
   ctx.font = '48px serif'
-  ctx.fillText(emoji, anchor.x, anchor.y)
+  ctx.fillText(emoji, maxX + 10, minY - 10)
 }
 
 
+
+/*  CUSTOM GAME LOGIC-
+ */
 
 // NOTE:
 // - Remember to call your update function from the "onImageResultsSuccess" event handler above
@@ -186,7 +237,9 @@ function drawEmoji(canvas, img, face) {
 var gameStarted   = false
 var priorEmoji    = null
 var currentEmoji  = null
+var timeExpressed = -1
 var targetEmoji   = null
+var numFailed     = 0
 var correctScore  = 0
 var totalAttempts = 0
 
@@ -197,24 +250,46 @@ function resetGame() {
   totalAttempts = 0
   priorEmoji    = null
   currentEmoji  = null
+  timeExpressed = -1
+  numFailed     = 0
   pickNextEmoji()
 }
 
 
 function updateGame(face) {
-  //
-  //  If there's been no change of expression, we simply store the current
-  //  emoji and return-
-  priorEmoji   = currentEmoji
+  var timeNow  = Date.now()
+  var didMatch = false
   currentEmoji = face.emojis.dominantEmoji
-  if (currentEmoji == priorEmoji) return
+  //
+  //  If we're not currently tracking an expression, store the current
+  //  emoji and start the timer.  If the current expression changes, wipe the
+  //  counter, and if the expression is stable for at least 2 seconds and
+  //  matches the target emoji, update the score.
+  if (priorEmoji == null) {
+    priorEmoji    = currentEmoji
+    timeExpressed = timeNow
+  }
+  else if (currentEmoji != priorEmoji) {
+    priorEmoji = null
+  }
+  else if (timeNow - timeExpressed > 2000 && toUnicode(currentEmoji) == targetEmoji) {
+    priorEmoji = null
+    didMatch   = true
+  }
+  if (! didMatch) return
   //
   //  If there's been a change of expression, check to see if it matches the
   //  target emoji, and increment score accordingly.
-  if (toUnicode(currentEmoji) == targetEmoji) {
-    pickNextEmoji()
-    correctScore += 1
-  }
+  pickNextEmoji()
+  correctScore  += 1
+  totalAttempts += 1
+  setScore(correctScore, totalAttempts)
+}
+
+
+function passOnGameTest() {
+  pickNextEmoji()
+  priorEmoji = null
   totalAttempts += 1
   setScore(correctScore, totalAttempts)
 }

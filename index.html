@@ -22,8 +22,9 @@
         </div>
         <div id="controls">
           <button id="start" onclick="onStart()">Start</button>
-          <button id="stop" onclick="onStop()">Stop</button>
+          <button id="stop"  onclick="onStop()" >Stop </button>
           <button id="reset" onclick="onReset()">Reset</button>
+          <button id="pass"  onclick="onPass()" >Pass </button>
         </div>
         <div id="instructions">
           <h5>INSTRUCTIONS</h5>
@@ -31,7 +32,8 @@
             <ul>
               <li>Press <strong>Start</strong> to initialize the detector.</li>
               <li>Your current emoji will be shown next to your head.</li>
-              <li>Mimic each emoji being displayed to score a point!</li>
+              <li>Mimic each emoji being displayed for at least 2 seconds to score.</li>
+              <li>Press <strong>Pass</strong> to give up and try another emoji.</li>
               <li>Press <strong>Stop</strong> to end the detector.</li>
               <li>Watch the tracking results and log messages for more information.</li>
             </ul>
