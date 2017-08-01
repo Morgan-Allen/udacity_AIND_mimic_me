@@ -159,7 +159,6 @@ var featureGroups = {
   "jawline"       : [0 , 1 , 2 , 3 , 4 ]
 }
 
-
 // Draw the detected facial feature points on the image
 function drawFeaturePoints(canvas, img, face) {
   //
@@ -167,11 +166,10 @@ function drawFeaturePoints(canvas, img, face) {
   var ctx = canvas.getContext('2d')
   //
   // Loop over each of the facial-feature groups and connect the lines:
-  ctx.fillStyle = "#000000"
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.5)"
   for (groupKey in featureGroups) {
     var group = featureGroups[groupKey]
     var initPoint = face.featurePoints[group[0]]
-
     ctx.beginPath()
     ctx.moveTo(initPoint.x, initPoint.y)
     for (var i = 1; i < group.length; i++) {
@@ -182,7 +180,7 @@ function drawFeaturePoints(canvas, img, face) {
   }
   //
   //  Draw each facial point on top of the lines-
-  ctx.fillStyle = "#FF0000"
+  ctx.fillStyle = "rgba(255, 0, 0, 1)"
   for (var id in face.featurePoints) {
     var featurePoint = face.featurePoints[id]
     ctx.beginPath()
@@ -218,7 +216,7 @@ function drawEmoji(canvas, img, face) {
   var ctx    = canvas.getContext('2d')
   var emoji  = face.emojis.dominantEmoji
   ctx.font = '48px serif'
-  ctx.fillText(emoji, maxX + 10, minY - 10)
+  ctx.fillText(emoji, avgX - 24, minY - ((maxY - minY) / 2))
 }
 
 
