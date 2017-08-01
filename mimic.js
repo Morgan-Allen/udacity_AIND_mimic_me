@@ -29,8 +29,7 @@ function setTargetEmoji(code) {
 
 // Convert a special character to its unicode value (can be 1 or 2 units long)
 function toUnicode(c) {
-  if(c.length == 1)
-    return c.charCodeAt(0)
+  if (c.length == 1) return c.charCodeAt(0)
   return ((((c.charCodeAt(0) - 0xD800) * 0x400) + (c.charCodeAt(1) - 0xDC00) + 0x10000))
 }
 
@@ -72,9 +71,9 @@ function onReset() {
   }
   $('#results').html("")  // clear out results
   $("#logs").html("")  // clear out previous log
-
-  // TODO(optional): You can restart the game as well
-  // <your code here>
+  //
+  // Reset game functionality
+  resetGame()
 }
 
 // Add a callback to notify when camera access is allowed
@@ -101,8 +100,8 @@ detector.addEventListener("onInitializeSuccess", function() {
   $("#face_video_canvas").css("display", "block")
   $("#face_video").css("display", "none")
   //
-  // TODO(optional): Call a function to initialize the game, if needed
-  // <your code here>
+  // Reset game functionality
+  resetGame()
 })
 
 
@@ -111,14 +110,14 @@ detector.addEventListener("onInitializeSuccess", function() {
 //   probabilities for different expressions, emotions and appearance metrics
 detector.addEventListener("onImageResultsSuccess", function(faces, image, timestamp) {
   var canvas = $('#face_video_canvas')[0]
-  if (!canvas)
-    return
-
+  if (! canvas) return
+  //
   // Report how many faces were found
   $('#results').html("")
   log('#results', "Timestamp: " + timestamp.toFixed(2))
   log('#results', "Number of faces found: " + faces.length)
   if (faces.length > 0) {
+    //
     // Report desired metrics
     log('#results', "Appearance: " + JSON.stringify(faces[0].appearance))
     log('#results', "Emotions: " + JSON.stringify(faces[0].emotions, function(key, val) {
@@ -128,13 +127,13 @@ detector.addEventListener("onImageResultsSuccess", function(faces, image, timest
       return val.toFixed ? Number(val.toFixed(0)) : val
     }))
     log('#results', "Emoji: " + faces[0].emojis.dominantEmoji)
-
+    //
     // Call functions to draw feature points and dominant emoji (for the first face only)
     drawFeaturePoints(canvas, image, faces[0])
     drawEmoji(canvas, image, faces[0])
-
-    // TODO: Call your function to run the game (define it first!)
-    // <your code here>
+    //
+    // Update game functionality:
+    updateGame(faces[0])
   }
 })
 
@@ -148,6 +147,11 @@ function drawFeaturePoints(canvas, img, face) {
   var ctx = canvas.getContext('2d')
   //
   // Loop over each feature point in the face
+
+  //
+  //  TODO:  Connect the dots between specific lines!  And maybe overlay a
+  //  polygon display.
+
   for (var id in face.featurePoints) {
     var featurePoint = face.featurePoints[id]
     ctx.beginPath()
@@ -162,16 +166,14 @@ function drawFeaturePoints(canvas, img, face) {
 function drawEmoji(canvas, img, face) {
   //
   //  Obtain a 2D context object to draw on the canvas
-  var ctx = canvas.getContext('2d')
-  var emoji = face.emojis.dominantEmoji
+  var ctx    = canvas.getContext('2d')
+  var emoji  = face.emojis.dominantEmoji
   var anchor = face.featurePoints[0]
   ctx.font = '48px serif'
   ctx.fillText(emoji, anchor.x, anchor.y)
 }
 
 
-
-// TODO: Define any variables and functions to implement the Mimic Me! game mechanics
 
 // NOTE:
 // - Remember to call your update function from the "onImageResultsSuccess" event handler above
@@ -180,11 +182,56 @@ function drawEmoji(canvas, img, face) {
 // - Unicode values for all emojis recognized by Affectiva are provided above in the list 'emojis'
 // - To check for a match, you can convert the dominant emoji to unicode using the toUnicode() function
 
-// Optional:
-// - Define an initialization/reset function, and call it from the "onInitializeSuccess" event handler above
-// - Define a game reset function (same as init?), and call it from the onReset() function above
 
-// <your code here>
+var gameStarted   = false
+var priorEmoji    = null
+var currentEmoji  = null
+var targetEmoji   = null
+var correctScore  = 0
+var totalAttempts = 0
+
+
+function resetGame() {
+  gameStarted   = true
+  correctScore  = 0
+  totalAttempts = 0
+  priorEmoji    = null
+  currentEmoji  = null
+  pickNextEmoji()
+}
+
+
+function updateGame(face) {
+  //
+  //  If there's been no change of expression, we simply store the current
+  //  emoji and return-
+  priorEmoji   = currentEmoji
+  currentEmoji = face.emojis.dominantEmoji
+  if (currentEmoji == priorEmoji) return
+  //
+  //  If there's been a change of expression, check to see if it matches the
+  //  target emoji, and increment score accordingly.
+  if (toUnicode(currentEmoji) == targetEmoji) {
+    pickNextEmoji()
+    correctScore += 1
+  }
+  totalAttempts += 1
+  setScore(correctScore, totalAttempts)
+}
+
+
+function pickNextEmoji() {
+  var index = Math.random() * emojis.length
+  targetEmoji = emojis[Math.round(index)]
+  setTargetEmoji(targetEmoji)
+}
+
+
+
+
+
+
+
 
 
 
